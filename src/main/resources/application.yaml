@@ -1,0 +1,30 @@
+spring:
+  application:
+    name: kubernetes
+
+  web:
+    cors:
+      enabled: true
+      configurations:
+        default:
+          allowed-origins:
+            - "http://localhost:4200"
+            - "http://192.168.66.108:4200"
+            - "http://192.168.66.115:4200"
+          allowed-methods:
+            - GET
+            - POST
+            - PUT
+            - PATCH
+            - DELETE
+            - OPTIONS
+          allowed-headers:
+            - "*"
+          allow-credentials: true
+
+server:
+  port: 9009
+
+exec:
+  timeout-seconds: 120
+
