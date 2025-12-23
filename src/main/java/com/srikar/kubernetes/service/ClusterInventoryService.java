@@ -10,6 +10,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
@@ -20,21 +22,30 @@ public class ClusterInventoryService {
     private final ClusterRepository clusterRepo;
     private final ClusterNodeRepository nodeRepo;
 
+    /**
+     * ✅ NEW: List clusters (no input)
+     */
+    @Transactional(readOnly = true)
+    public List<ClusterEntity> getClusters() {
+        // If you want ordering, update repo method accordingly (e.g., findAllByOrderByNameAsc()).
+        return clusterRepo.findAll();
+    }
+
     @Transactional
     public ClusterEntity refreshCluster(String clusterName) {
 
         Instant now = Instant.now();
 
         ClusterEntity cluster = clusterRepo.findByName(clusterName)
-                .orElseGet(() -> {
-                    ClusterEntity c = ClusterEntity.builder()
-                            .name(clusterName)
-                            .createdAt(now)
-                            .updatedAt(now)
-                            .build();
-                    return clusterRepo.save(c);
-                });
+                .orElseGet(() -> clusterRepo.save(
+                        ClusterEntity.builder()
+                                .name(clusterName)
+                                .createdAt(now)
+                                .updatedAt(now)
+                                .build()
+                ));
 
+        // update timestamp
         cluster.setUpdatedAt(now);
 
         // wipe old nodes for this cluster
@@ -43,7 +54,7 @@ public class ClusterInventoryService {
         // re-insert snapshot
         var nodes = client.nodes().list().getItems().stream()
                 .map(n -> {
-                    String name = n.getMetadata() != null ? n.getMetadata().getName() : null;
+                    String name = (n.getMetadata() != null) ? n.getMetadata().getName() : null;
 
                     // roles typically come from label: node-role.kubernetes.io/<role>
                     String roles = (n.getMetadata() != null && n.getMetadata().getLabels() != null)
@@ -67,6 +78,9 @@ public class ClusterInventoryService {
                             .orElse("Unknown")
                             : "Unknown";
 
+                    // if node name is null, skip it (prevents DB constraint issues)
+                    if (name == null || name.isBlank()) return null;
+
                     return ClusterNodeEntity.builder()
                             .cluster(cluster)
                             .name(name)
@@ -76,9 +90,12 @@ public class ClusterInventoryService {
                             .observedAt(now)
                             .build();
                 })
+                .filter(Objects::nonNull)
                 .toList();
 
         nodeRepo.saveAll(nodes);
+
+        // save the cluster once at the end
         return clusterRepo.save(cluster);
     }
 }

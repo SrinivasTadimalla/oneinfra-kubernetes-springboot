@@ -6,6 +6,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/k8s")
 @RequiredArgsConstructor
@@ -19,5 +21,11 @@ public class ClusterController {
         return ResponseEntity.ok().body(
                 java.util.Map.of("cluster", c.getName(), "updatedAt", c.getUpdatedAt().toString())
         );
+    }
+
+    // ✅ NEW: Get list of clusters (no input)
+    @GetMapping("/clusters")
+    public ResponseEntity<List<ClusterEntity>> listClusters() {
+        return ResponseEntity.ok(inventory.getClusters());
     }
 }

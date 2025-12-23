@@ -2,9 +2,9 @@ spring:
   application:
     name: kubernetes
 
-  # ----------------------------------------
-  # Web / CORS (Angular MFE support)
-  # ----------------------------------------
+  # ============================================================
+  # Web / CORS (Angular Micro Frontends)
+  # ============================================================
   web:
     cors:
       enabled: true
@@ -25,49 +25,67 @@ spring:
             - "*"
           allow-credentials: true
 
-  # ----------------------------------------
-  # Postgres DataSource (ENABLED)
-  # Uses iaas_kubernetes schema
-  # ----------------------------------------
+  # ============================================================
+  # PostgreSQL DataSource
+  # Schema: iaas_kubernetes
+  # ============================================================
   datasource:
     url: jdbc:postgresql://${DB_HOST:192.168.66.1}:5432/${DB_NAME:postgres}?currentSchema=${DB_SCHEMA:iaas_kubernetes}
     username: ${DB_USER:postgres}
     password: ${DB_PASSWORD:db2@dmin}
     driver-class-name: org.postgresql.Driver
 
-  # ----------------------------------------
+  # ============================================================
   # JPA / Hibernate
-  # ----------------------------------------
+  # ============================================================
   jpa:
     open-in-view: false
     hibernate:
-      ddl-auto: none   # keep SAFE; use Flyway or manual SQL
+      ddl-auto: none   # SAFE: schema controlled manually / Flyway
     properties:
       hibernate:
         format_sql: true
 
-  # ----------------------------------------
-  # Disable SQL init scripts (we control schema via SQL/Flyway)
-  # ----------------------------------------
+  # ============================================================
+  # Disable automatic SQL init
+  # ============================================================
   sql:
     init:
       mode: never
 
-# ----------------------------------------
+# ============================================================
 # Server
-# ----------------------------------------
+# ============================================================
 server:
   port: 9009
 
-# ----------------------------------------
+# ============================================================
+# Swagger / OpenAPI (springdoc)
+# ============================================================
+springdoc:
+  api-docs:
+    enabled: true
+    path: /v3/api-docs
+
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui.html
+    operationsSorter: method
+    tagsSorter: alpha
+    display-request-duration: true
+
+  default-consumes-media-type: application/json
+  default-produces-media-type: application/json
+
+# ============================================================
 # Custom OneInfra properties
-# ----------------------------------------
+# ============================================================
 exec:
   timeout-seconds: 120
 
-# ----------------------------------------
+# ============================================================
 # Logging
-# ----------------------------------------
+# ============================================================
 logging:
   level:
     root: INFO

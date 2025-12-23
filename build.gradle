@@ -5,7 +5,7 @@ plugins {
 }
 
 group = 'com.srikar'
-version = '0.0.1-SNAPSHOT'
+version = '1.0.0'
 description = 'Oneshift Kubernetes'
 
 java {
@@ -25,19 +25,75 @@ repositories {
 }
 
 dependencies {
-	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-	implementation 'org.springframework.boot:spring-boot-starter-security'
+
+	// ------------------------------
+	// Core Spring Boot Web Stack
+	// ------------------------------
+
+	// REST APIs, embedded Tomcat, JSON serialization (Jackson)
 	implementation 'org.springframework.boot:spring-boot-starter-web'
+
+	// Input validation (@Valid, @NotBlank, etc.)
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
-	implementation platform("io.fabric8:kubernetes-client-bom:6.10.0")
-	implementation "io.fabric8:kubernetes-client"
-	implementation "org.springframework.boot:spring-boot-starter-data-jpa"
-	runtimeOnly "org.postgresql:postgresql"   // or mysql driver, etc.
+
+	// ------------------------------
+	// Security
+	// ------------------------------
+
+	// Spring Security foundation (future-ready for JWT / Keycloak / OAuth2)
+	implementation 'org.springframework.boot:spring-boot-starter-security'
+
+	// ------------------------------
+	// Persistence (Optional / Future)
+	// ------------------------------
+
+	// JPA + Hibernate (currently disabled via auto-config exclude)
+	// Used later for cluster inventory, node metadata, audit logs
+	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+
+	// PostgreSQL JDBC driver (runtime only)
+	runtimeOnly 'org.postgresql:postgresql'
+
+	// ------------------------------
+	// Kubernetes Client
+	// ------------------------------
+
+	// BOM ensures all Fabric8 K8s modules use compatible versions
+	implementation platform('io.fabric8:kubernetes-client-bom:6.10.0')
+
+	// Fabric8 Kubernetes Client
+	// Used for interacting with Pods, Services, Ingress, Deployments, etc.
+	implementation 'io.fabric8:kubernetes-client'
+
+	// ------------------------------
+	// API Documentation
+	// ------------------------------
+
+	// Swagger / OpenAPI UI for REST API exploration
+	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.6'
+
+	// ------------------------------
+	// Developer Productivity
+	// ------------------------------
+
+	// Lombok (eliminates boilerplate: getters, setters, builders, loggers)
 	compileOnly 'org.projectlombok:lombok'
-	developmentOnly 'org.springframework.boot:spring-boot-devtools'
 	annotationProcessor 'org.projectlombok:lombok'
+
+	// Hot reload during development
+	developmentOnly 'org.springframework.boot:spring-boot-devtools'
+
+	// ------------------------------
+	// Testing
+	// ------------------------------
+
+	// JUnit 5 + Spring Boot test utilities
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+
+	// Security test helpers (MockMvc + security context)
 	testImplementation 'org.springframework.security:spring-security-test'
+
+	// JUnit launcher (IDE + Gradle compatibility)
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
