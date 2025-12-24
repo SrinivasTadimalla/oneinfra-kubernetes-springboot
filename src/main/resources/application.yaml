@@ -24,7 +24,11 @@ spring:
           # jwk-set-uri: https://192.168.66.1:9443/realms/oneinfra-realm/protocol/openid-connect/certs
 
   # ============================================================
-  # Web / CORS (Angular Micro Frontends)
+  # ✅ Web / CORS (Angular Micro Frontends)
+  #
+  # IMPORTANT:
+  # - This is the "policy". Spring Security still must enable CORS
+  #   via http.cors(...) for browser preflight to succeed.
   # ============================================================
   web:
     cors:
@@ -44,7 +48,13 @@ spring:
             - OPTIONS
           allowed-headers:
             - "*"
+          # Optional but useful if Angular needs to read headers returned by API
+          exposed-headers:
+            - "Authorization"
+            - "Location"
           allow-credentials: true
+          # Cache preflight response in the browser (seconds)
+          max-age: 3600
 
   # ============================================================
   # PostgreSQL DataSource

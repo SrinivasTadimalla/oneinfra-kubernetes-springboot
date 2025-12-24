@@ -1,7 +1,9 @@
 package com.srikar.kubernetes.controller;
 
+import com.srikar.kubernetes.api.ApiResponse;
 import com.srikar.kubernetes.dto.PodStatus;
 import com.srikar.kubernetes.service.KubeService;
+import com.srikar.kubernetes.utilities.ApiResponses;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -45,21 +47,23 @@ public class KubeController {
 
     /**
      * List namespaces (READ)
+     * Standardized API envelope (consistent with /k8s/clusters)
      */
     @PreAuthorize("hasAnyRole('KUBERNETES_ADMIN','KUBERNETES_DEV','KUBERNETES_TEST')")
     @GetMapping(value = "/namespaces", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<List<String>> namespaces() {
+    public ResponseEntity<ApiResponse<List<String>>> namespaces() {
         List<String> namespaces = kube.listNamespaces();
-        return ResponseEntity.ok(namespaces);
+        return ResponseEntity.ok(ApiResponses.ok("Namespaces fetched successfully", namespaces));
     }
 
     /**
      * List pods in a namespace (READ)
+     * Standardized API envelope (consistent with /k8s/clusters)
      */
     @PreAuthorize("hasAnyRole('KUBERNETES_ADMIN','KUBERNETES_DEV','KUBERNETES_TEST')")
     @GetMapping(value = "/pods/{namespace}", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<List<PodStatus>> pods(@PathVariable String namespace) {
+    public ResponseEntity<ApiResponse<List<PodStatus>>> pods(@PathVariable String namespace) {
         List<PodStatus> pods = kube.listPods(namespace);
-        return ResponseEntity.ok(pods);
+        return ResponseEntity.ok(ApiResponses.ok("Pods fetched successfully", pods));
     }
 }
