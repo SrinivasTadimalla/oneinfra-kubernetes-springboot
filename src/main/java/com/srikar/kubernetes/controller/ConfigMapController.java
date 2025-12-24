@@ -7,6 +7,7 @@ import com.srikar.kubernetes.service.ConfigMapService;
 import jakarta.validation.Valid;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -24,16 +25,22 @@ public class ConfigMapController {
         this.cfg = cfg;
     }
 
+    // READ: DEV/TEST/ADMIN
+    @PreAuthorize("hasAnyRole('KUBERNETES_ADMIN','KUBERNETES_DEV','KUBERNETES_TEST')")
     @GetMapping(value = "/configmaps/{namespace}", produces = MediaType.APPLICATION_JSON_VALUE)
     public List<ConfigMapDtos.ConfigMapSummary> list(@PathVariable String namespace) {
         return cfg.list(namespace);
     }
 
+    // READ: DEV/TEST/ADMIN
+    @PreAuthorize("hasAnyRole('KUBERNETES_ADMIN','KUBERNETES_DEV','KUBERNETES_TEST')")
     @GetMapping(value = "/configmaps/{namespace}/{name}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ConfigMapDetail get(@PathVariable String namespace, @PathVariable String name) {
         return cfg.get(namespace, name);
     }
 
+    // WRITE: ADMIN only
+    @PreAuthorize("hasRole('KUBERNETES_ADMIN')")
     @PostMapping(
             value = "/configmaps",
             consumes = MediaType.APPLICATION_JSON_VALUE,
@@ -48,10 +55,11 @@ public class ConfigMapController {
                 detail.getName()
         ));
 
-        // 201 Created + Location header + body
         return ResponseEntity.created(location).body(detail);
     }
 
+    // WRITE: ADMIN only
+    @PreAuthorize("hasRole('KUBERNETES_ADMIN')")
     @DeleteMapping("/configmaps/{namespace}/{name}")
     public ResponseEntity<Void> delete(@PathVariable String namespace, @PathVariable String name) {
         cfg.delete(namespace, name);

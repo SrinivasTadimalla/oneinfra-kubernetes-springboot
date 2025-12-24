@@ -3,42 +3,72 @@ package com.srikar.kubernetes.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.net.InetAddress;
 import java.time.Instant;
+import java.util.UUID;
 
-@Getter @Setter
+@Getter
+@Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "cluster_nodes", indexes = {
-        @Index(name = "idx_cluster_nodes_cluster_id", columnList = "cluster_id"),
-        @Index(name = "idx_cluster_nodes_name", columnList = "name")
-}, uniqueConstraints = {
-        @UniqueConstraint(name = "uk_cluster_nodes_cluster_name", columnNames = {"cluster_id", "name"})
-})
+@Table(
+        name = "cluster_nodes",
+        schema = "iaas_kubernetes",
+        indexes = {
+                @Index(name = "ix_cluster_nodes_cluster_id", columnList = "cluster_id"),
+                @Index(name = "ix_cluster_nodes_node_name", columnList = "node_name")
+        }
+)
 public class ClusterNodeEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @Column(name = "id", nullable = false)
+    private UUID id;
 
-    // Many nodes belong to one cluster
-    @ManyToOne(optional = false, fetch = FetchType.LAZY)
-    @JoinColumn(name = "cluster_id", nullable = false)
+    // ✅ FK to clusters.id
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "cluster_id", nullable = false, foreignKey = @ForeignKey(name = "fk_cluster_nodes_cluster"))
     private ClusterEntity cluster;
 
-    @Column(nullable = false, length = 128)
-    private String name;      // host / oneinfra-node1 / oneinfra-node2
+    @Column(name = "node_name", nullable = false, length = 200)
+    private String nodeName;
 
-    @Column(nullable = false, length = 32)
-    private String status;    // Ready / NotReady etc.
+    @Column(name = "status", length = 50)
+    private String status;
 
-    @Column(nullable = false, length = 64)
-    private String roles;     // "control-plane,master" or "worker"
+    @Column(name = "roles", length = 500)
+    private String roles;
 
-    @Column(nullable = false, length = 32)
-    private String version;   // v1.30.14
+    @Column(name = "kube_version", length = 50)
+    private String kubeVersion;
 
-    @Column(nullable = false)
-    private Instant observedAt;  // when this row was last refreshed
+    @Column(name = "container_runtime", length = 200)
+    private String containerRuntime;
+
+    @Column(name = "os_image", length = 300)
+    private String osImage;
+
+    @Column(name = "kernel_version", length = 100)
+    private String kernelVersion;
+
+    @Column(name = "is_control_plane")
+    private Boolean isControlPlane;
+
+    @Column(name = "is_vm")
+    private Boolean isVm;
+
+    @Column(name = "vm_name", length = 200)
+    private String vmName;
+
+    // ✅ IMPORTANT: map Postgres inet -> InetAddress
+    @Column(name = "internal_ip", columnDefinition = "inet")
+    private InetAddress internalIp;
+
+    @Column(name = "external_ip", columnDefinition = "inet")
+    private InetAddress externalIp;
+
+    @Column(name = "observed_at")
+    private Instant observedAt;
 }

@@ -6,31 +6,34 @@ import lombok.*;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
-@Getter @Setter
+@Getter
+@Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "clusters", uniqueConstraints = {
-        @UniqueConstraint(name = "uk_clusters_name", columnNames = {"name"})
-})
+@Table(
+        name = "clusters",
+        schema = "iaas_kubernetes",
+        uniqueConstraints = {
+                @UniqueConstraint(name = "uk_cluster_name", columnNames = {"cluster_name"})
+        }
+)
 public class ClusterEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @Column(name = "id", nullable = false)
+    private UUID id;
 
-    @Column(nullable = false, length = 64)
-    private String name;          // e.g., "oneinfra"
+    @Column(name = "cluster_name", nullable = false, length = 100)
+    private String name;
 
-    @Column(length = 256)
-    private String apiServer;     // optional, if you want to store API endpoint later
-
-    @Column(nullable = false)
+    @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
-    @Column(nullable = false)
+    @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
     @OneToMany(mappedBy = "cluster", cascade = CascadeType.ALL, orphanRemoval = true)

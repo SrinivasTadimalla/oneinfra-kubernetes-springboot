@@ -42,6 +42,8 @@ dependencies {
 
 	// Spring Security foundation (future-ready for JWT / Keycloak / OAuth2)
 	implementation 'org.springframework.boot:spring-boot-starter-security'
+	implementation "org.springframework.boot:spring-boot-starter-oauth2-resource-server"
+
 
 	// ------------------------------
 	// Persistence (Optional / Future)

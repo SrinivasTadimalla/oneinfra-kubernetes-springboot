@@ -6,6 +6,7 @@ import io.fabric8.kubernetes.client.utils.Serialization;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
@@ -27,25 +28,26 @@ public class DeploymentController {
         this.svc = svc;
     }
 
-    /** a) List all Deployments */
+    /** a) List all Deployments (READ) */
+    @PreAuthorize("hasAnyRole('KUBERNETES_ADMIN','KUBERNETES_DEV','KUBERNETES_TEST')")
     @GetMapping(value = "/deployments/{namespace}", produces = MediaType.APPLICATION_JSON_VALUE)
     public List<String> list(@PathVariable @NotBlank String namespace) {
         return svc.list(namespace);
     }
 
-    /** b) Get deployment YAML */
+    /** b) Get deployment YAML (READ) */
+    @PreAuthorize("hasAnyRole('KUBERNETES_ADMIN','KUBERNETES_DEV','KUBERNETES_TEST')")
     @GetMapping(value = "/deployments/{namespace}/{name}/yaml", produces = "text/yaml")
     public ResponseEntity<String> getYaml(@PathVariable String namespace,
                                           @PathVariable String name) {
-        // svc throws 404 if not found (recommended)
         String yaml = svc.getAsYaml(namespace, name);
-
         return ResponseEntity.ok()
                 .contentType(TEXT_YAML)
                 .body(yaml);
     }
 
-    /** c) Create Deployment from YAML */
+    /** c) Create Deployment from YAML (WRITE) */
+    @PreAuthorize("hasRole('KUBERNETES_ADMIN')")
     @PostMapping(
             value = "/deployments/{namespace}/yaml",
             consumes = {"text/yaml", "application/yaml"},
@@ -71,7 +73,8 @@ public class DeploymentController {
         return ResponseEntity.created(loc).body(body);
     }
 
-    /** d) Upsert Deployment from YAML */
+    /** d) Upsert Deployment from YAML (WRITE) */
+    @PreAuthorize("hasRole('KUBERNETES_ADMIN')")
     @PutMapping(
             value = "/deployments/{namespace}/{name}/yaml",
             consumes = {"text/yaml", "application/yaml"},
@@ -82,13 +85,13 @@ public class DeploymentController {
                                          @RequestBody String yaml) {
         Deployment updated = svc.upsertFromYaml(namespace, name, yaml);
 
-        // If svc already sanitizes for YAML, this is fine; otherwise you may sanitize here.
         return ResponseEntity.ok()
                 .contentType(TEXT_YAML)
                 .body(Serialization.asYaml(updated));
     }
 
-    /** e) Delete Deployment */
+    /** e) Delete Deployment (WRITE) */
+    @PreAuthorize("hasRole('KUBERNETES_ADMIN')")
     @DeleteMapping("/deployments/{namespace}/{name}")
     public ResponseEntity<Void> delete(@PathVariable String namespace,
                                        @PathVariable String name) {

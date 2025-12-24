@@ -5,6 +5,7 @@ import com.srikar.kubernetes.service.KubeService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -19,13 +20,20 @@ public class KubeController {
         this.kube = kube;
     }
 
-    /** Liveness probe */
+    /**
+     * Liveness probe
+     * Exposed for LB / Kubernetes health checks
+     */
     @GetMapping(value = "/health", produces = MediaType.TEXT_PLAIN_VALUE)
     public ResponseEntity<String> health() {
         return ResponseEntity.ok("ok");
     }
 
-    /** Kubernetes connectivity diagnostics */
+    /**
+     * Kubernetes connectivity diagnostics
+     * ADMIN only (infra visibility)
+     */
+    @PreAuthorize("hasRole('KUBERNETES_ADMIN')")
     @GetMapping(value = "/diag", produces = MediaType.TEXT_PLAIN_VALUE)
     public ResponseEntity<String> diag() {
         if (kube.isHealthy()) {
@@ -35,14 +43,20 @@ public class KubeController {
                 .body("cluster-unreachable");
     }
 
-    /** List namespaces */
+    /**
+     * List namespaces (READ)
+     */
+    @PreAuthorize("hasAnyRole('KUBERNETES_ADMIN','KUBERNETES_DEV','KUBERNETES_TEST')")
     @GetMapping(value = "/namespaces", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<String>> namespaces() {
         List<String> namespaces = kube.listNamespaces();
         return ResponseEntity.ok(namespaces);
     }
 
-    /** List pods in a namespace */
+    /**
+     * List pods in a namespace (READ)
+     */
+    @PreAuthorize("hasAnyRole('KUBERNETES_ADMIN','KUBERNETES_DEV','KUBERNETES_TEST')")
     @GetMapping(value = "/pods/{namespace}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<PodStatus>> pods(@PathVariable String namespace) {
         List<PodStatus> pods = kube.listPods(namespace);

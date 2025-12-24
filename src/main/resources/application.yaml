@@ -3,6 +3,27 @@ spring:
     name: kubernetes
 
   # ============================================================
+  # ✅ JVM SSL TRUSTSTORE (outbound HTTPS from Spring)
+  # Spring will call Keycloak discovery/JWKS over HTTPS.
+  # ============================================================
+  main:
+    system-properties:
+      javax.net.ssl.trustStore: ${JVM_TRUSTSTORE:/home/srinivas/pki/truststores/srinivas-trust-store.p12}
+      javax.net.ssl.trustStorePassword: ${JVM_TRUSTSTORE_PASSWORD:Srikar@1}
+      javax.net.ssl.trustStoreType: ${JVM_TRUSTSTORE_TYPE:PKCS12}
+
+  # ============================================================
+  # ✅ Spring Security - Resource Server (JWT)
+  # ============================================================
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: https://192.168.66.1:9443/realms/oneinfra-realm
+          # If issuer-uri ever gives trouble, you can switch to:
+          # jwk-set-uri: https://192.168.66.1:9443/realms/oneinfra-realm/protocol/openid-connect/certs
+
+  # ============================================================
   # Web / CORS (Angular Micro Frontends)
   # ============================================================
   web:
@@ -41,7 +62,7 @@ spring:
   jpa:
     open-in-view: false
     hibernate:
-      ddl-auto: none   # SAFE: schema controlled manually / Flyway
+      ddl-auto: none
     properties:
       hibernate:
         format_sql: true
@@ -54,10 +75,24 @@ spring:
       mode: never
 
 # ============================================================
-# Server
+# ✅ Your custom app properties (NO hardcoding in Java)
+# ============================================================
+oneinfra:
+  security:
+    keycloak:
+      client-id: ${KEYCLOAK_CLIENT_ID:kubernetes-backend-auth}
+
+# ============================================================
+# Server (HTTPS enabled)
 # ============================================================
 server:
   port: 9009
+  ssl:
+    enabled: true
+    key-store: ${K8S_BACKEND_KEYSTORE:/home/srinivas/pki/kubernetes-backend-api/k8s-backend-keystore.p12}
+    key-store-password: ${K8S_BACKEND_KEYSTORE_PASSWORD:Srikar@1}
+    key-store-type: ${K8S_BACKEND_KEYSTORE_TYPE:PKCS12}
+    key-alias: ${K8S_BACKEND_KEY_ALIAS:k8s-backend}
 
 # ============================================================
 # Swagger / OpenAPI (springdoc)
@@ -66,14 +101,12 @@ springdoc:
   api-docs:
     enabled: true
     path: /v3/api-docs
-
   swagger-ui:
     enabled: true
     path: /swagger-ui.html
     operationsSorter: method
     tagsSorter: alpha
     display-request-duration: true
-
   default-consumes-media-type: application/json
   default-produces-media-type: application/json
 
