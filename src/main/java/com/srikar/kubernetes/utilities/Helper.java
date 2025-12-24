@@ -7,6 +7,7 @@ import io.fabric8.kubernetes.api.model.ServicePort;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
 import io.fabric8.kubernetes.client.KubernetesClient;
 
+import java.net.InetAddress;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeParseException;
@@ -130,4 +131,15 @@ public final class Helper {
         }
         d.setStatus(null);
     }
+
+    /** Convert IP String -> InetAddress (for Postgres inet columns) */
+    public static InetAddress toInet(String ip) {
+        if (ip == null || ip.isBlank()) return null;
+        try {
+            return InetAddress.getByName(ip.trim());
+        } catch (Exception e) {
+            return null; // keep it lenient; you can throw if you want strict
+        }
+    }
+
 }

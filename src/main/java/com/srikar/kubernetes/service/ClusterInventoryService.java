@@ -2,8 +2,11 @@ package com.srikar.kubernetes.service;
 
 import com.srikar.kubernetes.db.ClusterNodeRepository;
 import com.srikar.kubernetes.db.ClusterRepository;
+import com.srikar.kubernetes.dto.ClusterDto;
+import com.srikar.kubernetes.dto.ClusterNodeDto;
 import com.srikar.kubernetes.entity.ClusterEntity;
 import com.srikar.kubernetes.entity.ClusterNodeEntity;
+import com.srikar.kubernetes.utilities.Helper;
 import io.fabric8.kubernetes.api.model.NodeAddress;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import lombok.RequiredArgsConstructor;
@@ -12,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.net.InetAddress;
 import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -24,18 +28,78 @@ public class ClusterInventoryService {
     private final ClusterRepository clusterRepo;
     private final ClusterNodeRepository nodeRepo;
 
+    /**
+     * READ-ONLY API projection for listing Kubernetes clusters with node snapshots.
+     *
+     * <p><b>Why this method exists:</b>
+     * <ul>
+     *   <li>Avoids exposing JPA entities directly to REST controllers</li>
+     *   <li>Prevents LazyInitializationException during JSON serialization</li>
+     *   <li>Prevents infinite recursion caused by bi-directional JPA relationships
+     *       (ClusterEntity ↔ ClusterNodeEntity)</li>
+     * </ul>
+     *
+     * <p><b>How it works:</b>
+     * <ul>
+     *   <li>Uses a fetch-join query (findAllWithNodes) to eagerly load clusters and nodes
+     *       in a single SQL query</li>
+     *   <li>Runs fully inside a read-only transactional boundary</li>
+     *   <li>Maps persistence entities into immutable DTOs before returning</li>
+     * </ul>
+     *
+     * <p><b>Important design notes:</b>
+     * <ul>
+     *   <li>DTO mapping happens inside the transaction to ensure all required data
+     *       is initialized while the Hibernate session is open</li>
+     *   <li>The returned DTOs are detached from JPA/Hibernate and safe for serialization</li>
+     *   <li>Do NOT change this method to return entities directly</li>
+     * </ul>
+     *
+     * <p><b>Used by:</b>
+     * <ul>
+     *   <li>GET /k8s/clusters (DEV / TEST / ADMIN roles)</li>
+     * </ul>
+     */
     @Transactional(readOnly = true)
-    public List<ClusterEntity> getClusters() {
-        return clusterRepo.findAll();
+    public List<ClusterDto> getClusterDtos() {
+        return clusterRepo.findAllWithNodes().stream()
+                .map(c -> ClusterDto.builder()
+                        .id(c.getId())
+                        .name(c.getName())
+                        .createdAt(c.getCreatedAt())
+                        .updatedAt(c.getUpdatedAt())
+                        .nodes(
+                                c.getNodes().stream()
+                                        .map(n -> ClusterNodeDto.builder()
+                                                .id(n.getId())
+                                                .nodeName(n.getNodeName())
+                                                .status(n.getStatus())
+                                                .roles(n.getRoles())
+                                                .kubeVersion(n.getKubeVersion())
+                                                .internalIp(n.getInternalIp())
+                                                .externalIp(n.getExternalIp())
+                                                .isControlPlane(n.getIsControlPlane())
+                                                .isVm(n.getIsVm())
+                                                .vmName(n.getVmName())
+                                                .observedAt(n.getObservedAt())
+                                                .build()
+                                        )
+                                        .toList()
+                        )
+                        .build()
+                )
+                .toList();
     }
+
+
 
     /**
      * ✅ Main entrypoint:
      * Controller triggers this to upsert the cluster + snapshot nodes.
      *
-     * This is the equivalent of running:
+     * Equivalent to:
      *   kubectl get nodes -o wide
-     * and persisting the result.
+     * and persist the snapshot.
      */
     @Transactional
     public ClusterEntity upsertClusterFromK8s(String clusterName) {
@@ -96,11 +160,12 @@ public class ClusterInventoryService {
                             : "Unknown";
 
                     Map<String, String> ips = extractNodeIps(st);
-                    String internalIp = ips.get("InternalIP");
-                    String externalIp = ips.get("ExternalIP");
+
+                    InetAddress internalIp = Helper.toInet(ips.get("InternalIP"));
+                    InetAddress externalIp = Helper.toInet(ips.get("ExternalIP"));
 
                     // DB internal_ip is NOT NULL, so skip if missing
-                    if (internalIp == null || internalIp.isBlank()) return null;
+                    if (internalIp == null) return null;
 
                     String osImage = (st != null && st.getNodeInfo() != null)
                             ? nullSafe(st.getNodeInfo().getOsImage(), "—")
@@ -114,14 +179,14 @@ public class ClusterInventoryService {
                             ? nullSafe(st.getNodeInfo().getContainerRuntimeVersion(), "—")
                             : "—";
 
-                    // For now, infer VM based on your lab (workers are VMs; control-plane is host)
+                    // For now: infer VM based on your lab (workers are VMs; control-plane is host)
                     boolean isVm = !isControlPlane;
                     String vmName = isVm ? nodeName : null;
 
                     return ClusterNodeEntity.builder()
                             .id(UUID.randomUUID())
                             .cluster(cluster)
-                            .name(nodeName)
+                            .nodeName(nodeName)
                             .status(nodeStatus)
                             .roles(roles)
                             .kubeVersion(kubeVersion)
@@ -130,8 +195,8 @@ public class ClusterInventoryService {
                             .osImage(osImage)
                             .kernelVersion(kernelVersion)
                             .containerRuntime(containerRuntime)
-                            .controlPlane(isControlPlane)
-                            .vm(isVm)
+                            .isControlPlane(isControlPlane)
+                            .isVm(isVm)
                             .vmName(vmName)
                             .observedAt(now)
                             .build();
@@ -144,7 +209,6 @@ public class ClusterInventoryService {
         return clusterRepo.save(cluster);
     }
 
-    // Keep old method name if your controller still calls refreshCluster(...)
     @Transactional
     public ClusterEntity refreshCluster(String clusterName) {
         return upsertClusterFromK8s(clusterName);

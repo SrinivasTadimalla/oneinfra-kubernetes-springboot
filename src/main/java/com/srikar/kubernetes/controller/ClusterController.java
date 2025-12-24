@@ -1,5 +1,6 @@
 package com.srikar.kubernetes.controller;
 
+import com.srikar.kubernetes.dto.ClusterDto;
 import com.srikar.kubernetes.entity.ClusterEntity;
 import com.srikar.kubernetes.service.ClusterInventoryService;
 import lombok.RequiredArgsConstructor;
@@ -39,7 +40,8 @@ public class ClusterController {
      */
     @PreAuthorize("hasAnyRole('KUBERNETES_ADMIN','KUBERNETES_DEV','KUBERNETES_TEST')")
     @GetMapping("/clusters")
-    public ResponseEntity<List<ClusterEntity>> listClusters() {
-        return ResponseEntity.ok(inventory.getClusters());
+    public ResponseEntity<List<ClusterDto>> listClusters() {
+        return ResponseEntity.ok(inventory.getClusterDtos());
     }
+
 }
